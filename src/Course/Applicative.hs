@@ -36,6 +36,11 @@ class Functor k => Applicative k where
     -> k a
     -> k b
 
+-- Functor vs Applicative 
+-- <*> :: k (a -> b) -> k a -> k b
+-- <$> ::   (a -> b) -> k a -> k b
+
+
 infixl 4 <*>
 
 -- | Insert into ExactlyOne.

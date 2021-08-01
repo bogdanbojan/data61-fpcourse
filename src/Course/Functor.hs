@@ -56,8 +56,7 @@ instance Functor List where
     (a -> b)
     -> List a
     -> List b
-  (<$>) =
-    error "todo: Course.Functor (<$>)#instance List"
+  (<$>) f  = foldRight (\a as -> f a :. as) Nil -- originally this had another arg - `as` but they reduce themselves
 
 -- | Maps a function on the Optional functor.
 --
