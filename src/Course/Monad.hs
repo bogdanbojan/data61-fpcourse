@@ -12,6 +12,7 @@ import Course.Functor
 import Course.List
 import Course.Optional
 import qualified Prelude as P((=<<))
+import GHC.Plugins (nO_METHOD_BINDING_ERROR_ID)
 
 -- | All instances of the `Monad` type-class must satisfy one law. This law
 -- is not checked by the compiler. This law is given as:
@@ -36,8 +37,9 @@ instance Monad ExactlyOne where
     (a -> ExactlyOne b)
     -> ExactlyOne a
     -> ExactlyOne b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance ExactlyOne"
+  (=<<) f eoa = let
+    a = runExactlyOne eoa
+    in f a -- if reduced this becomes : f . runExactlyOne || replaced with bindExactlyOne
 
 -- | Binds a function on a List.
 --
@@ -48,8 +50,7 @@ instance Monad List where
     (a -> List b)
     -> List a
     -> List b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance List"
+  (=<<) = flatMap
 
 -- | Binds a function on an Optional.
 --
@@ -60,8 +61,7 @@ instance Monad Optional where
     (a -> Optional b)
     -> Optional a
     -> Optional b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance Optional"
+  (=<<) = bindOptional 
 
 -- | Binds a function on the reader ((->) t).
 --
@@ -69,11 +69,18 @@ instance Monad Optional where
 -- 119
 instance Monad ((->) t) where
   (=<<) ::
-    (a -> ((->) t b))
-    -> ((->) t a)
+    (a -> ((->) t b)) -- this is eq to a -> t -> b
+    -> ((->) t a) -- this is eq to t -> a
     -> ((->) t b)
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance ((->) t)"
+  (=<<) atb ta = 
+    \t -> atb (ta t) t 
+
+-- for figuring the above one out this might help (type sig is eq to the one above):
+-- (a -> t -> b)
+-- -> t -> a
+-- -> t 
+-- -> b
+
 
 -- | Witness that all things with (=<<) and (<$>) also have (<*>).
 --
@@ -111,8 +118,12 @@ instance Monad ((->) t) where
   k (a -> b)
   -> k a
   -> k b
-(<**>) kab ka = kab >>= \a -> a <$> ka
-   
+(<**>) kab ka = kab >>= \kab' -> 
+                ka  >>= \ka' ->
+                pure (kab' ka')
+
+-- different way: fab >>= (<$> fa)
+
 infixl 4 <**>
 
 -- | Flattens a combined structure to a single structure.
@@ -132,9 +143,9 @@ join ::
   Monad k =>
   k (k a)
   -> k a
-join =
-  error "todo: Course.Monad#join"
-
+join kka =
+  id =<< kka -- (\a -> a) eq to ka -> ka. Also, can be reduced to `join = (id =<<)`
+ 
 -- | Implement a flipped version of @(=<<)@, however, use only
 -- @join@ and @(<$>)@.
 -- Pronounced, bind flipped.
@@ -146,8 +157,9 @@ join =
   k a
   -> (a -> k b)
   -> k b
-(>>=) =
-  error "todo: Course.Monad#(>>=)"
+(>>=) ka f=
+  f =<< ka -- can also be written as flip (=<<)
+
 
 infixl 1 >>=
 
@@ -162,9 +174,8 @@ infixl 1 >>=
   -> (a -> k b)
   -> a
   -> k c
-(<=<) =
-  error "todo: Course.Monad#(<=<)"
-
+(<=<) bkc akb a =
+  bkc =<< akb a
 infixr 1 <=<
 
 -----------------------
